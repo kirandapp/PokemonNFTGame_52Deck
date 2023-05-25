@@ -197,6 +197,7 @@ contract PokemonGame is Ownable, IERC721Receiver {
         for (uint256 i = 0; i < selectedNftIds.length; i++) {
             NFTContract.safeTransferFrom(address(this), msg.sender, selectedNftIds[i]);
         }
+        
     }
 
     function cancelBattle(uint _matchId) external {
@@ -210,10 +211,9 @@ contract PokemonGame is Ownable, IERC721Receiver {
         for (uint256 i = 0; i < bt.nftids.length; i++) {
             NFTContract.safeTransferFrom(address(this), msg.sender, bt.nftids[i]);
         }
-        TokenContract.transfer(msg.sender, bt.battleamount);
         console.log("Cancel functon- NFT balance after transfer - ",NFTContract.balanceOf(msg.sender));
         battleStatus[_matchId] = BattleStatus.Cancel;
-        delete(_battle[_matchId]);
+        // delete(_battle[_matchId]);
         matchIdExist[_matchId] = false;
     }
 
@@ -338,5 +338,4 @@ contract PokemonGame is Ownable, IERC721Receiver {
 		return IERC721Receiver.onERC721Received.selector;
 	} 
 }
-
 

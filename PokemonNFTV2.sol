@@ -84,6 +84,7 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
         return tokenId;
     }
 
+    //  Be careful of gas spending!
     function batchMintPokemon(uint256 numberOfNftIds) public {
         require(_tokenIdCounter.current() + numberOfNftIds <= MAX_TO_MINT, "Minting Stopped!");
         for (uint i = 0; i < numberOfNftIds; i++) {
@@ -119,7 +120,7 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
         isInitialize = _bool;
     }
 
-    function setMAX_TO_MINT(uint256 _maxToMint) public onlyOwner {
+    function setMaxMintOverall(uint256 _maxToMint) public onlyOwner {
         require(MAX_TO_MINT > 0,"Max must be greater than 0 !");
         MAX_TO_MINT = _maxToMint;
     }

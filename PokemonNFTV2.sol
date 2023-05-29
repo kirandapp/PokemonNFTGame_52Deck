@@ -3,16 +3,21 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "./PokemonGameV2.sol";
+import "./PokemonStatV2.sol";
 
 contract PokemonNFTV2 is ERC721Enumerable, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
+    PokemonStatV2 public StatContrat;
+
     uint constant MAX_STATS_SUM = 150;
     uint constant MIN_STATS_SUM = 50;
     uint public MAX_TO_MINT = 10000;
+    uint public MAX_TO_MINT_WALLET = 20;
     bool public isInitialize; 
 
     string private _baseUri;
@@ -20,12 +25,24 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
 
     mapping(uint256 => string) private _tokenURIs;
     mapping(address => bool) public _isBlacklisted;
+    mapping(address => uint256) private _tokensMintedPerWallet;
 
     constructor() ERC721("PokemonNFT", "PKMN") {}
 
-    function initialize(address _pokemonGameAddress, string memory baseUri) public {
+    function isContract(address _addr) private view returns (bool iscontract){
+        uint32 size;
+        assembly {
+            size := extcodesize(_addr)
+        }
+        return (size > 0);
+    }
+
+    function initialize(address _pokemonGameAddress, address statContractAddress, string memory baseUri) public {
         require(!isInitialize,"Already Initialize!");
         require(owner() == msg.sender, "Only owner can initialize");
+        require(isContract(_pokemonGameAddress),"Game Address is not contract!");
+        require(isContract(statContractAddress),"Stat Address is not contract!");
+        StatContrat = PokemonStatV2(statContractAddress);
         pg = PokemonGame(_pokemonGameAddress);
         _baseUri = baseUri;
         isInitialize = true;
@@ -34,19 +51,21 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
     function mintPokemon() public returns (uint256) {
         console.log("log 1");
         require(_tokenIdCounter.current() + 1 <= MAX_TO_MINT, "Minting Stopped!");
+        require(_tokensMintedPerWallet[msg.sender] < MAX_TO_MINT_WALLET, "Exceeded maximum limit per wallet");
         console.log("log 2");
-        uint[6] memory stats;
+        // StatContrat.stattype.length;
+        string[] memory stattype = StatContrat.getStatsArray(); 
+        uint[] memory stats = new uint256[](stattype.length);
+        // console.log(stats);
         console.log("log 3");
         uint statsSum;
         console.log("log 4");
-        uint randomSeed = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))); //, totalSupply()
+        uint256 randomSeed = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))); //, totalSupply()
         console.log("log 5");
         // Generate random stats
-        stats[0] = (uint(keccak256(abi.encodePacked(randomSeed, "Attack"))) % 100) + 1;
-        stats[1] = (uint(keccak256(abi.encodePacked(randomSeed, "Defence"))) % 100) + 1;
-        stats[2] = (uint(keccak256(abi.encodePacked(randomSeed, "SP"))) % 100) + 1;
-        stats[3] = (uint(keccak256(abi.encodePacked(randomSeed, "HP"))) % 100) + 1;
-        stats[4] = (uint(keccak256(abi.encodePacked(randomSeed, "MP"))) % 100) + 1;
+        for (uint256 i = 0; i < stattype.length; i++) {
+            stats[i] = (uint256(keccak256(abi.encodePacked(randomSeed, stattype[i]))) % 100) + 1;
+        }
         console.log("log 6");
         uint battletype = (uint(keccak256(abi.encodePacked(randomSeed, "battleType"))) % 5);
         console.log("log 7");
@@ -55,7 +74,15 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
         for (uint i = 0; i < stats.length; i++) {
             statsSum += stats[i];
         }
-        statsSum = (statsSum % (MAX_STATS_SUM - MIN_STATS_SUM + 1)) + MIN_STATS_SUM;
+        // statsSum = (statsSum % (MAX_STATS_SUM - MIN_STATS_SUM + 1)) + MIN_STATS_SUM;
+        // Adjust stats if necessary to match the required sum range (50 to 150)
+        while (statsSum < MIN_STATS_SUM || statsSum > MAX_STATS_SUM) {
+            statsSum = 0;
+            for (uint i = 0; i < stats.length; i++) {
+                stats[i] = (uint(keccak256(abi.encodePacked(randomSeed, i)))) % 100 + 1;
+                statsSum += stats[i];
+            }
+        }
         console.log("log 8");
         // Scale stats to match the required sum
         uint scaledStatsSum;
@@ -75,10 +102,11 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
         console.log("log 11");
-        pg.setPokemonStats(tokenId, stats[0], stats[1], stats[2], stats[3], stats[4], battletype);      
+        pg.setPokemonStats(tokenId, stats, battletype);      
         console.log("log 12");
         // Mint the NFT
         _mint(msg.sender, tokenId);
+        _tokensMintedPerWallet[msg.sender] += 1; // Increment count of tokens minted for the wallet
         // _setTokenURI(tokenId, _tokenURI);
         console.log("log 13");
         return tokenId;
@@ -87,10 +115,11 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
     //  Be careful of gas spending!
     function batchMintPokemon(uint256 numberOfNftIds) public {
         require(_tokenIdCounter.current() + numberOfNftIds <= MAX_TO_MINT, "Minting Stopped!");
+        require(_tokensMintedPerWallet[msg.sender] + numberOfNftIds <= MAX_TO_MINT_WALLET, "Exceeded maximum limit per wallet");
         for (uint i = 0; i < numberOfNftIds; i++) {
             mintPokemon();
         }
-}
+    }
 
     function tokensOfOwner(address _owner) public view returns (uint256[] memory) {
         uint256 tokenCount = balanceOf(_owner);

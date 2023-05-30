@@ -5,11 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PokemonStatV2 is Ownable {
 
-    struct PokemonStats {
-        uint256[] stats;
-        uint256 battleType;
-    }
-
     string[] public StatType;
 
     function setStatsArray(string[] memory _statsArray) public returns(bool) {
@@ -19,7 +14,7 @@ contract PokemonStatV2 is Ownable {
     }
 
     function getStatsArray() public view returns (string[] memory) {
-        return StatType;
+        return StatType;    //  ["attack","defense","sp","hp","mp"]
     }
 
     function getStatsArrayLength() public view returns (uint256) {

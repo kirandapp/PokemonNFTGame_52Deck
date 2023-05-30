@@ -49,100 +49,42 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
     }
 
     function mintPokemon() public returns (uint256) {
-        console.log("log 1");
         require(_tokenIdCounter.current() + 1 <= MAX_TO_MINT, "Minting Stopped!");
         require(_tokensMintedPerWallet[msg.sender] < MAX_TO_MINT_WALLET, "Exceeded maximum limit per wallet");
-        console.log("log 2");
-        // StatContrat.stattype.length;
         string[] memory stattype = StatContrat.getStatsArray(); 
-        uint[] memory stats = new uint256[](stattype.length);
-        // console.log(stats);
-        console.log("log 3");
-        uint statsSum;
-        console.log("log 4");
-        uint256 randomSeed = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))); //, totalSupply()
-        console.log("log 5");
+        uint256[] memory stats = new uint256[](stattype.length);
+        uint256 statsSum;
+        uint256 randomSeed = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender)));
         // Generate random stats
         for (uint256 i = 0; i < stattype.length; i++) {
             stats[i] = (uint256(keccak256(abi.encodePacked(randomSeed, stattype[i]))) % 100) + 1;
              statsSum += stats[i];
         }
-        console.log("log 6");
-        uint battletype = (uint(keccak256(abi.encodePacked(randomSeed, "battleType"))) % 5);
-        console.log("log 7");
-        console.log("log 8");
-        // Scale stats to match the required sum
-        uint scaledStatsSum;
-        for (uint i = 0; i < stats.length; i++) {  
-            stats[i] = stats[i] * statsSum / 500;
-            scaledStatsSum += stats[i];
-        } 
-        console.log("log 9");
-        // console.log("Stats Sum 50 to 150 ",stats[0]);
-
-        uint256 desiredSum = (50 + 150) / 2; // Desired sum between 50 and 150
-        uint256 currentSum = statsSum;
-
+        uint256 desiredSum = (uint256(keccak256(abi.encodePacked(randomSeed, "desiredSum"))) % 101) + MIN_STATS_SUM; // Generate a random desired sum between 50 and 150
         // Scale stats to match the desired sum
         for (uint256 i = 0; i < stats.length; i++) {
-            console.log("log 10");
-            uint256 scaledStat = (stats[i] * desiredSum * 100) / currentSum;
-            stats[i] = scaledStat;
-            scaledStatsSum += scaledStat;
+            stats[i] = (stats[i] * desiredSum) / statsSum;
         }
-
-        if (scaledStatsSum != desiredSum) {
-            console.log("log 11");
-        // Find the index of the largest stat
-            uint256 maxStatIndex;
-            uint256 maxStatValue;
-            bool foundMaxStat = false;
-            for (uint256 i = 0; i < stats.length; i++) {
-                console.log("log 12");
-                if (stats[i] > maxStatValue) {
-                    maxStatIndex = i;
-                    console.log(maxStatIndex);
-                    maxStatValue = stats[i];
-                    console.log(maxStatValue);
-                    foundMaxStat = true;
-                }
-            }
-            // Adjust the largest stat to reach the desired sum
-            if (foundMaxStat) {
-                console.log("foundMaxStat - ",foundMaxStat);
-                stats[maxStatIndex] -= (scaledStatsSum - desiredSum);
-                scaledStatsSum = desiredSum;    // Update the statsSum to reflect the scaled and adjusted stats
-            }
-             console.log("scaledStatsSum - ",scaledStatsSum);
-            // stats[maxStatIndex] -= scaledStatsSum - desiredSum;
-            // console.log("log 13",stats[maxStatIndex]);
+        console.log("before - statsSum, desiredSum",statsSum,desiredSum);
+        // Calculate the new stats sum
+        statsSum = 0;
+        for (uint256 i = 0; i < stats.length; i++) {
+            statsSum += stats[i];
         }
-        // Update the statsSum to reflect the scaled and adjusted stats
-        // statsSum = desiredSum;
-        // console.log("log 13",statsSum);
-        
-        // // Adjust stats if necessary to match the required sum exactly
-        // if (scaledStatsSum != statsSum) {
-        //     stats[3] += (statsSum - scaledStatsSum);
-        // }
-        console.log("log 13");
-        console.log("Stats Sum 50 to 150 statsSum - ",statsSum);
-        console.log("Stats Sum 50 to 150 statsSum - ",desiredSum);
-        // Add stats to the stats contract
+        console.log("after - statsSum, desiredSum",statsSum,desiredSum);
+        console.log("end scale logic");
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
-        console.log("log 14");
         uint256 sumofstats;
         for (uint256 i = 0; i < stats.length; i++) {
             sumofstats += stats[i];
         }
-        console.log("sumofstats - ",sumofstats);
-        pg.setPokemonStats(tokenId, stats, battletype);      
-        console.log("log 15");
+        console.log("sum of stats - ",sumofstats);
+        console.log("statsSum - ",statsSum);
+        pg.setPokemonStats(tokenId, stats);  
         // Mint the NFT
         _mint(msg.sender, tokenId);
-        _tokensMintedPerWallet[msg.sender] += 1; // Increment count of tokens minted for the wallet
-        // _setTokenURI(tokenId, _tokenURI);
+        _tokensMintedPerWallet[msg.sender] += 1;
         console.log("log 16");
         return tokenId;
     }

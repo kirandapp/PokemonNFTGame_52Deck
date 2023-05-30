@@ -7,16 +7,16 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./PokemonStatV2.sol";
+import "./IPokemonStatV2.sol";
 
-contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
+contract PokemonGame is Ownable, IERC721Receiver {
 
     using Counters for Counters.Counter;
     Counters.Counter private _matchIdCounter;
 
     IERC721Enumerable private NFTContract; 
     IERC20 private TokenContract;
-    PokemonStatV2 public StatContract;
+    IPokemonStatV2 public StatContract;
     address public feeAddress;
 
     uint256 public fee = 500; //5%  
@@ -36,6 +36,12 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
     //     uint256 mp;
     //     uint256 battleType;
     // }
+
+    struct PokemonStats {
+        uint256[] stats;
+        uint256 battleType;
+    }
+
     string[5] BattleType = ["WOOD","WATER","LAND","FIRE","AIR"] ;//Wood water land fire AIR
     // string[5] StatType = ["ATTACK","DEFENSE","SP","HP","MP"] ;//ATTACK DEFENSE SP HP MP
     
@@ -93,7 +99,7 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
         isWhitelist[statContractAddress];
         NFTContract = IERC721Enumerable(_nft);
         TokenContract = IERC20(_token);
-        StatContract = PokemonStatV2(statContractAddress);
+        StatContract = IPokemonStatV2(statContractAddress);
         isInitialize = true;
     }
     
@@ -117,7 +123,7 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
         // take token to create battle
         TokenContract.transferFrom(msg.sender, address(this), _tokenamount);
 
-        string[] memory stattype = getStatsArray();
+        string[] memory stattype = StatContract.getStatsArray();
         uint256 statindex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % stattype.length;
         uint256 stat;
         for (uint256 i = 0; i < SELECT_CARD_FROM_DECK; i++) {
@@ -126,7 +132,7 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
             for (uint256 j = 0; j < stattype.length; j++) {
                 if (statindex == j) {
                     stat += nftstats.stats[j];
-                    selectedNftStats[j] = nftstats.stats[j];
+                    selectedNftStats[i] = nftstats.stats[j];
                 }
             }
         }
@@ -290,7 +296,7 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
         require(isWhitelist[msg.sender], "StatsContract: Only the whitelisted addresses can set Pokemon stats.");
         uint256 sumofstats;
         for (uint256 i = 0; i < _stats.length; i++) {
-            sumofstats += _stats[0];
+            sumofstats += _stats[i];
         }
         require(sumofstats <= 150 && sumofstats >= 50, "StatsContract: Total stats can't exceed 150.");
         PokemonStats memory stat = PokemonStats({
@@ -305,9 +311,10 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
         PokemonStats storage stats = _pokemonStats[tokenId];
         return (stats.stats);  
     }
-    function getStats() public view returns (string[] memory) {
-        return StatType;
-    }
+    // function getStats() public view returns (string[] memory) {
+    //     return StatType;
+    // }
+
     function getBattle(uint256 _matchId) public view returns (uint256[] memory, uint256[] memory, address, uint256, uint256, uint256) {
         Battle memory bt = _battle[_matchId];
         return (bt.nftids, bt.nftstats, bt.creatorAddress, bt.stat, bt.statIndex, bt.battleamount);
@@ -339,6 +346,9 @@ contract PokemonGame is Ownable, IERC721Receiver, PokemonStatV2 {
     }
     function getMatchIds() external view returns (uint[] memory) {
         return matchIds;
+    }
+    function getstatArrayfromStat() public view returns (string[] memory) {
+        return StatContract.getStatsArray();
     }
     function getBattleStatus(uint256 _matchId) external view returns(string memory) {
         if (battleStatus[_matchId] == BattleStatus.Close) {

@@ -56,31 +56,39 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
         uint256 statsSum;
         uint256 randomSeed = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender)));
         // Generate random stats
+        uint256 diff;
+        uint diff2;
+        uint256 totalMaxNumber; 
         for (uint256 i = 0; i < stattype.length; i++) {
-            stats[i] = (uint256(keccak256(abi.encodePacked(randomSeed, stattype[i]))) % 100) + 1;
-             statsSum += stats[i];
-        }
-        uint256 desiredSum = (uint256(keccak256(abi.encodePacked(randomSeed, "desiredSum"))) % 101) + MIN_STATS_SUM; // Generate a random desired sum between 50 and 150
-        // Scale stats to match the desired sum
-        for (uint256 i = 0; i < stats.length; i++) {
-            stats[i] = (stats[i] * desiredSum) / statsSum;
-        }
-        console.log("before - statsSum, desiredSum",statsSum,desiredSum);
-        // Calculate the new stats sum
-        statsSum = 0;
-        for (uint256 i = 0; i < stats.length; i++) {
+            uint randStat = (uint256(keccak256(abi.encodePacked(randomSeed, stattype[i]))) % 100) + 1;   
+            uint localstatsSum = statsSum + randStat;
+            if (localstatsSum > MAX_STATS_SUM && diff == 0) {                              
+                diff = MAX_STATS_SUM - statsSum;                                     
+                uint remainingStats = diff / ( stattype.length - i );      
+                totalMaxNumber = diff / remainingStats;                 
+            }
+
+            if (diff > 0) {
+                stats[i] = (uint256(keccak256(abi.encodePacked(randomSeed, stattype[i]))) % totalMaxNumber) + 1;                
+            }
+            else {
+                if (i == stattype.length && localstatsSum < MIN_STATS_SUM) {
+                    diff2 = MIN_STATS_SUM - localstatsSum;
+                    stats[i] = diff2;
+                }
+                else {
+                    stats[i] = randStat;
+                }    
+            }
             statsSum += stats[i];
         }
-        console.log("after - statsSum, desiredSum",statsSum,desiredSum);
-        console.log("end scale logic");
+
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
-        uint256 sumofstats;
-        for (uint256 i = 0; i < stats.length; i++) {
-            sumofstats += stats[i];
-        }
-        console.log("sum of stats - ",sumofstats);
-        console.log("statsSum - ",statsSum);
+
+        console.log("sum of stats - ",statsSum);
+        // revert(statsSum >= 50 && statsSum <= 150);
+
         pg.setPokemonStats(tokenId, stats);  
         // Mint the NFT
         _mint(msg.sender, tokenId);
@@ -129,6 +137,11 @@ contract PokemonNFTV2 is ERC721Enumerable, Ownable {
     function setMaxMintOverall(uint256 _maxToMint) public onlyOwner {
         require(MAX_TO_MINT > 0,"Max must be greater than 0 !");
         MAX_TO_MINT = _maxToMint;
+    }
+
+    function setMaxMintWallet(uint256 _maxwallet) public onlyOwner {
+        require(MAX_TO_MINT_WALLET > 0,"Max must be greater than 0!");
+        MAX_TO_MINT_WALLET = _maxwallet;
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {

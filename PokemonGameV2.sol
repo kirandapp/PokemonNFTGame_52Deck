@@ -293,7 +293,10 @@ contract PokemonGame is Ownable, IERC721Receiver {
             sumofstats += _stats[i];
         }
         console.log("sumofstats - ",sumofstats);
-        require(sumofstats <= 150 && sumofstats >= 50, "StatsContract: Total stats can't exceed 150.");
+        // require(sumofstats <= 150 && sumofstats >= 50, "StatsContract: Total stats can't exceed 150.");
+        require(sumofstats >= 50,"Error :- Sum of stats less than 50!");
+        require(sumofstats <= 150,"Error :- Sum of stats greater than 150!");
+
         PokemonStats memory stat = PokemonStats({
             stats: _stats
         });

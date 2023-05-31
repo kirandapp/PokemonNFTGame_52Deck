@@ -14,15 +14,11 @@ contract PokemonStatV2 is Ownable {
     }
 
     function getStatsArray() public view returns (string[] memory) {
-        return StatType;    //  ["attack","defense","sp","hp","mp"]
+        return StatType;    //  [attack,defense,sp,hp,mp]
     }
 
     function getStatsArrayLength() public view returns (uint256) {
         return StatType.length;
     }
-    // function getStatsStruct() public view returns (PokemonStats memory) {
-    //     PokemonStats memory ps = PokemonStats;
-    //     return ps;
-    // }
 }
 
